@@ -1,0 +1,636 @@
+:root {
+  --bg-activity: #181818;
+  --bg-editor: #1e1e1e;
+  --bg-panel: #252526;
+  --bg-header: #2d2d2d;
+  --bg-input: #3c3c3c;
+  --bg-statusbar: #007acc;
+  --border-color: #3e3e42;
+  --text-main: #cccccc;
+  --text-muted: #858585;
+  --text-bright: #ffffff;
+  --accent-blue: #0e639c;
+  --accent-blue-hover: #1177bb;
+  --accent-cyan: #4fc1ff;
+  --c4-person-bg: #08427b;
+  --c4-person-border: #052e56;
+  --c4-system-bg: #1168bd;
+  --c4-system-border: #0b4884;
+  --c4-container-bg: #2b78e4;
+  --c4-container-border: #1a56aa;
+  --c4-db-bg: #1168bd;
+  --c4-external-bg: #686868;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-code: 'Fira Code', Consolas, "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.vscode-theme {
+  background-color: var(--bg-editor);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* App Outer Shell */
+.app-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-editor);
+}
+
+/* VS Code Activity Bar */
+.activity-bar {
+  width: 50px;
+  background-color: var(--bg-activity);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.nav-top, .nav-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.nav-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  position: relative;
+}
+
+.nav-icon:hover {
+  color: var(--text-bright);
+}
+
+.nav-icon.active {
+  color: var(--text-bright);
+}
+
+.nav-icon.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background-color: var(--accent-cyan);
+}
+
+/* Workbench area */
+.workbench {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  background-color: var(--bg-editor);
+}
+
+/* Top App Header / Title bar */
+.app-header {
+  height: 38px;
+  background-color: var(--bg-activity);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
+.window-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-badge {
+  background: rgba(79, 193, 255, 0.12);
+  color: var(--accent-cyan);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(79, 193, 255, 0.25);
+}
+
+.separator {
+  color: var(--text-muted);
+}
+
+.file-name {
+  color: var(--text-bright);
+  font-weight: 500;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.status-indicator .dot.live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #3fb950;
+  box-shadow: 0 0 6px #3fb950;
+}
+
+/* 1. Prompt Bar Section */
+.prompt-bar-section {
+  background: linear-gradient(180deg, #252528 0%, #1e1e20 100%);
+  border-bottom: 1px solid var(--border-color);
+  padding: 14px 20px;
+}
+
+.prompt-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.prompt-input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-input);
+  border: 1px solid #4a4a50;
+  border-radius: 6px;
+  padding: 4px 6px 4px 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.prompt-input-wrapper:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px var(--accent-cyan), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.sparkle-icon {
+  color: #c792ea;
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+#prompt-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-bright);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  padding: 6px 0;
+}
+
+#prompt-input::placeholder {
+  color: #929292;
+}
+
+.primary-btn {
+  background-color: var(--accent-blue);
+  color: var(--text-bright);
+  border: 1px solid #1a82c4;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.05s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.primary-btn:hover {
+  background-color: var(--accent-blue-hover);
+}
+
+.primary-btn:active {
+  transform: translateY(1px);
+}
+
+.sample-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+
+.sample-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 2px;
+}
+
+.sample-tag {
+  background-color: #2d2d30;
+  color: var(--text-main);
+  border: 1px solid #3e3e42;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.sample-tag:hover {
+  background-color: #38383e;
+  border-color: #55555c;
+  color: var(--text-bright);
+}
+
+.sample-tag.active {
+  background-color: rgba(14, 99, 156, 0.35);
+  border-color: #2b78e4;
+  color: #9cdcfe;
+  font-weight: 600;
+}
+
+.sample-tag .tag-icon {
+  font-size: 13px;
+}
+
+/* 2. Split Screen View */
+.editor-stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  background-color: var(--bg-editor);
+  overflow: hidden;
+}
+
+.code-panel {
+  border-right: 1px solid var(--border-color);
+  background-color: #1a1a1c;
+}
+
+.panel-header {
+  height: 35px;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  user-select: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-family: var(--font-code);
+  font-weight: 500;
+}
+
+.tab.active-tab {
+  color: var(--text-bright);
+}
+
+.file-icon {
+  color: #e5c07b;
+}
+
+.preview-icon {
+  color: #61afef;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge-lang, .diagram-tag {
+  font-size: 11px;
+  background-color: #333338;
+  color: #9cdcfe;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid #44444a;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  position: relative;
+}
+
+.icon-btn:hover {
+  background-color: #38383e;
+  color: var(--text-bright);
+}
+
+.btn-tooltip {
+  display: none;
+  position: absolute;
+  top: -24px;
+  right: 0;
+  background-color: #0e639c;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.btn-tooltip.show {
+  display: block;
+}
+
+/* Code viewport */
+.code-viewport {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  font-family: var(--font-code);
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: #18181a;
+}
+
+.line-numbers {
+  padding: 16px 12px;
+  color: #5c6370;
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid #28282e;
+  background-color: #141416;
+  font-size: 12px;
+}
+
+.code-content {
+  flex: 1;
+  padding: 16px 20px;
+  color: #abb2bf;
+  margin: 0;
+  overflow-x: auto;
+}
+
+/* Syntax Highlighting Mock */
+.code-c4-directive { color: #c678dd; font-weight: bold; }
+.code-c4-fn { color: #61afef; font-weight: 600; }
+.code-c4-str { color: #98c379; }
+.code-c4-comment { color: #5c6370; font-style: italic; }
+.code-c4-var { color: #e5c07b; }
+
+/* Preview Panel */
+.preview-panel {
+  background-color: #1e1e24;
+  position: relative;
+}
+
+.preview-canvas-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+/* VS Code / Graph Grid Pattern */
+.canvas-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.diagram-mount {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 960px;
+}
+
+/* C4 Diagram Layout Container */
+.c4-diagram {
+  position: relative;
+  width: 100%;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.c4-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.c4-svg-overlay line, .c4-svg-overlay path {
+  stroke: #4fa6ff;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.c4-conn-label {
+  fill: #dcdcdc;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  text-anchor: middle;
+  background: rgba(30, 30, 30, 0.85);
+}
+
+.c4-cards-layer {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 480px;
+}
+
+/* C4 Card Component */
+.c4-card {
+  position: absolute;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+  border: 1.5px solid transparent;
+}
+
+.c4-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+}
+
+.c4-card.person {
+  background: linear-gradient(135deg, #0b4987 0%, #06315c 100%);
+  border-color: #2b78e4;
+  border-radius: 20px 20px 8px 8px; /* Classic C4 Person shape cue */
+}
+
+.c4-card.system {
+  background: linear-gradient(135deg, #1168bd 0%, #0c4d8d 100%);
+  border-color: #4aa3ff;
+}
+
+.c4-card.external {
+  background: linear-gradient(135deg, #444950 0%, #303338 100%);
+  border-color: #6a717a;
+}
+
+.c4-card.database {
+  background: linear-gradient(135deg, #0e5a9e 0%, #093c6b 100%);
+  border-color: #3b8fe0;
+  border-radius: 12px;
+}
+
+.c4-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.c4-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.c4-card-icon {
+  font-size: 16px;
+}
+
+.c4-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #ffffff;
+}
+
+.c4-card-tech {
+  font-size: 11px;
+  font-family: var(--font-code);
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.c4-card-desc {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Status Bar */
+.status-bar {
+  height: 24px;
+  background-color: var(--bg-statusbar);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 12px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.status-left, .status-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.status-item.highlight {
+  font-weight: 600;
+}
+
+.branch-icon {
+  font-size: 13px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

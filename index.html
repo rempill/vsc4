@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C4 Architecture Studio - VS Code Extension Prototype</title>
+  <meta name="description" content="A prototype VS Code style C4 diagram generator and visual editor.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="vscode-theme">
+  <!-- VS Code Outer Shell -->
+  <div class="app-layout">
+    <!-- Activity Bar -->
+    <aside class="activity-bar" aria-label="Activity Bar">
+      <div class="nav-top">
+        <div class="nav-icon" title="Explorer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <div class="nav-icon active" title="C4 Diagram Studio">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/><path d="M10 7.5L6.5 15.5M14 7.5l3.5 8M8 18h8"/></svg>
+        </div>
+        <div class="nav-icon" title="Source Control">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="9" r="3"/><path d="M6 9v6M9 6h4a5 5 0 0 1 5 5v0"/></svg>
+        </div>
+      </div>
+      <div class="nav-bottom">
+        <div class="nav-icon" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Extension Window -->
+    <main class="workbench">
+      <!-- Titlebar / Header -->
+      <header class="app-header">
+        <div class="window-title-badge">
+          <span class="product-badge">VS CODE EXTENSION</span>
+          <span class="separator">/</span>
+          <span class="file-name">c4-architecture.preview</span>
+        </div>
+        <div class="status-indicator">
+          <span class="dot live"></span>
+          <span>Live Sync Ready</span>
+        </div>
+      </header>
+
+      <!-- 1. Top Bar: AI Prompt & Preset Actions -->
+      <section class="prompt-bar-section" aria-label="Architecture Generator Controls">
+        <div class="prompt-bar-container">
+          <div class="prompt-input-wrapper">
+            <span class="sparkle-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+              </svg>
+            </span>
+            <input 
+              id="prompt-input" 
+              type="text" 
+              placeholder="Describe your architecture (e.g., 'E-commerce store with Stripe payment')..."
+              value="E-commerce store with Stripe payment and relational DB"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="btn-generate" class="primary-btn" title="Generate Diagram">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Generate Diagram</span>
+            </button>
+          </div>
+
+          <div class="sample-tags-row">
+            <span class="sample-label">Examples:</span>
+            <button id="tag-ecommerce" class="sample-tag active" data-preset="ecommerce">
+              <span class="tag-icon">🛒</span>
+              <span>E-Commerce System</span>
+            </button>
+            <button id="tag-auth" class="sample-tag" data-preset="auth">
+              <span class="tag-icon">🔐</span>
+              <span>User Auth Flow</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Split Screen View -->
+      <section class="editor-stage">
+        <!-- Left Panel: Mermaid C4 Code -->
+        <div class="panel code-panel">
+          <div class="panel-header">
+            <div class="tab active-tab">
+              <svg class="file-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>architecture.c4.mmd</span>
+            </div>
+            <div class="panel-actions">
+              <button class="icon-btn" id="btn-copy-code" title="Copy Mermaid code">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span class="btn-tooltip">Copied!</span>
+              </button>
+              <span class="badge-lang">Mermaid C4</span>
+            </div>
+          </div>
+          <div class="code-viewport">
+            <div class="line-numbers" id="line-numbers"></div>
+            <pre class="code-content"><code id="code-display"></code></pre>
+          </div>
+        </div>
+
+        <!-- Splitter bar -->
+        <div class="gutter" aria-hidden="true"></div>
+
+        <!-- Right Panel: Visual Preview -->
+        <div class="panel preview-panel">
+          <div class="panel-header">
+            <div class="tab preview-tab active-tab">
+              <svg class="preview-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Visual Preview (C4 Model)</span>
+            </div>
+            <div class="zoom-controls">
+              <span id="diagram-title" class="diagram-tag">C4 Container Context</span>
+            </div>
+          </div>
+
+          <div class="preview-canvas-wrapper" id="preview-canvas">
+            <div class="canvas-grid-bg"></div>
+            <!-- Dynamic Diagram Container -->
+            <div class="diagram-mount" id="diagram-mount">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Status Bar -->
+      <footer class="status-bar">
+        <div class="status-left">
+          <span class="status-item"><span class="branch-icon">⎇</span> main</span>
+          <span class="status-item">Mermaid C4 Context</span>
+          <span class="status-item" id="node-count">3 Components • 3 Relations</span>
+        </div>
+        <div class="status-right">
+          <span class="status-item">UTF-8</span>
+          <span class="status-item">Spaces: 2</span>
+          <span class="status-item highlight">✓ Model Validated</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
