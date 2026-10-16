@@ -274,5 +274,54 @@ btnCopyCode.addEventListener("click", () => {
   });
 });
 
+// Upload .c4rules.yaml Button
+const rulesInput = document.getElementById("rules-file-input");
+const btnUploadRules = document.getElementById("btn-upload-rules");
+const rulesStatus = document.getElementById("rules-status");
+const MAX_RULES_SIZE = 100 * 1024;
+
+function showRulesResult(ok, message) {
+  btnUploadRules.classList.toggle("loaded", ok);
+  btnUploadRules.classList.toggle("error", !ok);
+  rulesStatus.classList.toggle("error", !ok);
+  rulesStatus.textContent = (ok ? "✓ " : "✗ ") + message;
+
+  const tooltip = btnUploadRules.querySelector(".btn-tooltip");
+  tooltip.textContent = ok ? "Rules loaded" : message;
+  tooltip.classList.add("show");
+  setTimeout(() => tooltip.classList.remove("show"), 2000);
+}
+
+function validateRulesFile(file) {
+  if (!/\.ya?ml$/i.test(file.name)) {
+    return Promise.resolve("Wrong file type (expected .yaml / .yml)");
+  }
+  if (file.size === 0) return Promise.resolve("Rules file is empty");
+  if (file.size > MAX_RULES_SIZE) return Promise.resolve("Rules file too large (max 100 KB)");
+
+  return file.text().then(text => {
+    if (!text.trim()) return "Rules file is empty";
+    if (!/^rules\s*:/m.test(text)) return "Missing top-level 'rules:' key";
+    return null;
+  });
+}
+
+btnUploadRules.addEventListener("click", () => rulesInput.click());
+
+rulesInput.addEventListener("change", () => {
+  const file = rulesInput.files[0];
+  if (!file) return;
+
+  validateRulesFile(file).then(error => {
+    if (error) {
+      showRulesResult(false, error);
+    } else {
+      showRulesResult(true, `Rules: ${file.name}`);
+    }
+    // Reset so picking the same file again still fires "change"
+    rulesInput.value = "";
+  });
+});
+
 // Initialize on Load
 setState("ecommerce");
