@@ -395,6 +395,18 @@ body.vscode-theme {
   display: block;
 }
 
+#btn-upload-rules.loaded {
+  color: #89d185;
+}
+
+#btn-upload-rules.error {
+  color: #f48771;
+}
+
+#btn-upload-rules.error .btn-tooltip {
+  background-color: #a1260d;
+}
+
 /* Code viewport */
 .code-viewport {
   flex: 1;
@@ -619,6 +631,12 @@ body.vscode-theme {
 
 .status-item.highlight {
   font-weight: 600;
+}
+
+.status-item.error {
+  background-color: #a1260d;
+  padding: 0 6px;
+  border-radius: 2px;
 }
 
 .branch-icon {
