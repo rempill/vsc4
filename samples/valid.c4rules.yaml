@@ -1,0 +1,11 @@
+# Example architecture rules for the C4 Architecture Studio
+version: 1
+rules:
+  - id: external-systems
+    description: Every third-party service (payments, email, maps, ...) must be a System_Ext and its label must end with "(vendor)".
+  - id: databases
+    description: All databases must be ContainerDb with technology "PostgreSQL".
+  - id: protocols
+    description: Every Rel must state a protocol as its 4th argument (e.g. "HTTPS", "gRPC", "SQL/TCP").
+  - id: no-direct-db-access
+    description: A Person must never have a Rel directly to a database.

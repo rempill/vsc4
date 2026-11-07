@@ -154,14 +154,24 @@ const diagramMount = document.getElementById("diagram-mount");
 const diagramTitle = document.getElementById("diagram-title");
 const nodeCount = document.getElementById("node-count");
 const btnCopyCode = document.getElementById("btn-copy-code");
+const btnGenerateLabel = btnGenerate.querySelector("span");
+
+let currentCode = "";
+let loadedRulesText = "";
 
 // Syntax Highlighter for C4 Mermaid
 function highlightC4(text) {
+  // Single pass, so later rules never match inside spans added by earlier ones
   return text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/(C4Context|C4Container|title)/g, '<span class="code-c4-directive">$1</span>')
-    .replace(/(Person|System|System_Ext|Container|ContainerDb|Rel)\b/g, '<span class="code-c4-fn">$1</span>')
-    .replace(/("[^"]*")/g, '<span class="code-c4-str">$1</span>');
+    .replace(
+      /("[^"]*")|\b(C4Context|C4Container|C4Component|title)\b|\b(Person_Ext|Person|System_Ext|SystemDb_Ext|SystemDb|System|ContainerDb_Ext|ContainerDb|Container_Ext|Container|Component|BiRel|Rel(?:_[A-Za-z]+)?)\b/g,
+      (match, str, directive) => {
+        if (str) return `<span class="code-c4-str">${str}</span>`;
+        if (directive) return `<span class="code-c4-directive">${directive}</span>`;
+        return `<span class="code-c4-fn">${match}</span>`;
+      }
+    );
 }
 
 // Render Diagram Cards and Connecting Arrows
@@ -193,7 +203,13 @@ function renderDiagram(state) {
   svgContent += `</svg>`;
 
   // HTML Cards
-  let cardsHtml = `<div class="c4-cards-layer">`;
+  // AI-generated layouts carry their own canvas size; presets use the CSS default
+  const sizeStyle = state.canvas
+    ? `style="width: ${state.canvas.width}px; min-width: ${state.canvas.width}px; min-height: ${state.canvas.height}px;"`
+    : "";
+  const layerStyle = state.canvas ? `style="height: ${state.canvas.height}px;"` : "";
+
+  let cardsHtml = `<div class="c4-cards-layer" ${layerStyle}>`;
   state.cards.forEach(card => {
     cardsHtml += `
       <div class="c4-card ${card.type}" style="top: ${card.pos.top}px; left: ${card.pos.left}px; width: ${card.pos.width}px; min-height: ${card.pos.height}px;">
@@ -210,24 +226,16 @@ function renderDiagram(state) {
   cardsHtml += `</div>`;
 
   diagramMount.innerHTML = `
-    <div class="c4-diagram animate-fade">
+    <div class="c4-diagram animate-fade" ${sizeStyle}>
       ${svgContent}
       ${cardsHtml}
     </div>
   `;
 }
 
-// Switch and Apply State
-function setState(key) {
-  currentStateKey = key;
-  const state = STATES[key];
-
-  // Update input text
-  promptInput.value = state.prompt;
-
-  // Update sample tag active styles
-  tagEcommerce.classList.toggle("active", key === "ecommerce");
-  tagAuth.classList.toggle("active", key === "auth");
+// Show a state (preset or AI-generated) in both panels
+function showState(state) {
+  currentCode = state.code;
 
   // Update code view
   codeDisplay.innerHTML = highlightC4(state.code);
@@ -242,11 +250,27 @@ function setState(key) {
   renderDiagram(state);
 }
 
+// Switch and Apply State
+function setState(key) {
+  currentStateKey = key;
+  const state = STATES[key];
+
+  // Update input text
+  promptInput.value = state.prompt;
+
+  // Update sample tag active styles
+  tagEcommerce.classList.toggle("active", key === "ecommerce");
+  tagAuth.classList.toggle("active", key === "auth");
+
+  showState(state);
+}
+
 // Event Listeners
 tagEcommerce.addEventListener("click", () => setState("ecommerce"));
 tagAuth.addEventListener("click", () => setState("auth"));
 
-btnGenerate.addEventListener("click", () => {
+// Keyword mock: the original hardcoded behaviour
+function generateWithKeywords() {
   const query = promptInput.value.toLowerCase();
   if (query.includes("auth") || query.includes("login") || query.includes("jwt") || query.includes("user")) {
     setState("auth");
@@ -255,6 +279,48 @@ btnGenerate.addEventListener("click", () => {
   } else {
     // Toggle state if generic
     setState(currentStateKey === "ecommerce" ? "auth" : "ecommerce");
+  }
+}
+
+async function generateWithAI() {
+  const prompt = promptInput.value.trim();
+  if (!prompt) return;
+
+  const provider = aiSettings.provider;
+  const model = aiSettings.models[provider];
+  const modelName = shortModelName(model);
+  btnGenerate.disabled = true;
+  btnGenerateLabel.textContent = "Generating…";
+  setAiStatus(`⏳ ${modelName} generating…`);
+
+  try {
+    const code = await generateC4InBrowser({
+      prompt,
+      rulesText: loadedRulesText,
+      model,
+      onProgress: (progress, text) => {
+        // First run downloads the model; later runs load it from the browser cache
+        btnGenerateLabel.textContent = progress < 1 ? `Loading model ${Math.round(progress * 100)}%` : "Generating…";
+        setAiStatus(progress < 1 ? `⏳ ${text.slice(0, 80)}` : `⏳ ${modelName} generating…`);
+      }
+    });
+    showState(c4CodeToState(code));
+    tagEcommerce.classList.remove("active");
+    tagAuth.classList.remove("active");
+    setAiStatus(`✓ Generated by ${modelName}${loadedRulesText ? " (with rules)" : ""}`);
+  } catch (err) {
+    setAiStatus(`✗ ${err.message}`, true);
+  } finally {
+    btnGenerate.disabled = false;
+    btnGenerateLabel.textContent = "Generate Diagram";
+  }
+}
+
+btnGenerate.addEventListener("click", () => {
+  if (aiSettings.provider === "mock") {
+    generateWithKeywords();
+  } else {
+    generateWithAI();
   }
 });
 
@@ -266,8 +332,7 @@ promptInput.addEventListener("keydown", (e) => {
 
 // Copy Code Button
 btnCopyCode.addEventListener("click", () => {
-  const code = STATES[currentStateKey].code;
-  navigator.clipboard.writeText(code).then(() => {
+  navigator.clipboard.writeText(currentCode).then(() => {
     const tooltip = btnCopyCode.querySelector(".btn-tooltip");
     tooltip.classList.add("show");
     setTimeout(() => tooltip.classList.remove("show"), 1500);
@@ -312,10 +377,12 @@ rulesInput.addEventListener("change", () => {
   const file = rulesInput.files[0];
   if (!file) return;
 
-  validateRulesFile(file).then(error => {
+  validateRulesFile(file).then(async error => {
     if (error) {
+      loadedRulesText = "";
       showRulesResult(false, error);
     } else {
+      loadedRulesText = await file.text();
       showRulesResult(true, `Rules: ${file.name}`);
     }
     // Reset so picking the same file again still fires "change"
@@ -323,5 +390,79 @@ rulesInput.addEventListener("change", () => {
   });
 });
 
+// AI Settings (in-browser WebLLM or keyword mock)
+const btnAiSettings = document.getElementById("btn-ai-settings");
+const aiSettingsPanel = document.getElementById("ai-settings-panel");
+const aiModeLabel = document.getElementById("ai-mode-label");
+const aiProviderSelect = document.getElementById("ai-provider-select");
+const aiModelRow = document.getElementById("ai-model-row");
+const aiModelSelect = document.getElementById("ai-model-select");
+const btnAiSave = document.getElementById("btn-ai-save");
+const aiStatus = document.getElementById("ai-status");
+
+let aiSettings = loadAiSettings();
+
+function shortModelName(id) {
+  return id.split("/").pop().replace(/-q4f\d+_\d-MLC$/, "");
+}
+
+function setAiStatus(text, isError = false) {
+  aiStatus.textContent = text;
+  aiStatus.classList.toggle("error", isError);
+}
+
+function refreshAiMode() {
+  const provider = aiSettings.provider;
+  const on = provider !== "mock";
+  const modelName = on ? shortModelName(aiSettings.models[provider]) : "";
+  aiModeLabel.textContent = on ? `AI: ${modelName}` : "AI: Keyword mock";
+  btnAiSettings.classList.toggle("ai-on", on);
+  setAiStatus(on ? `AI: ${modelName} (in browser)` : "AI: keyword mock");
+}
+
+// Fill the model list for the provider picked in the settings panel
+function fillModelOptions(provider) {
+  const models = AI_PROVIDERS[provider].models;
+  aiModelSelect.innerHTML = "";
+  models.forEach(m => {
+    const option = document.createElement("option");
+    option.value = m.id;
+    option.textContent = m.label;
+    aiModelSelect.appendChild(option);
+  });
+  if (models.length) aiModelSelect.value = aiSettings.models[provider] || models[0].id;
+  aiModelRow.hidden = models.length === 0;
+}
+
+Object.entries(AI_PROVIDERS).forEach(([key, p]) => {
+  const option = document.createElement("option");
+  option.value = key;
+  option.textContent = p.label;
+  aiProviderSelect.appendChild(option);
+});
+
+aiProviderSelect.addEventListener("change", () => fillModelOptions(aiProviderSelect.value));
+
+btnAiSettings.addEventListener("click", () => {
+  const open = aiSettingsPanel.hidden;
+  aiSettingsPanel.hidden = !open;
+  btnAiSettings.setAttribute("aria-expanded", String(open));
+  if (open) {
+    aiProviderSelect.value = aiSettings.provider;
+    fillModelOptions(aiSettings.provider);
+  }
+});
+
+btnAiSave.addEventListener("click", () => {
+  const provider = aiProviderSelect.value;
+  aiSettings.provider = provider;
+  if (AI_PROVIDERS[provider].models.length) aiSettings.models[provider] = aiModelSelect.value;
+  saveAiSettings(aiSettings);
+  refreshAiMode();
+  aiSettingsPanel.hidden = true;
+  btnAiSettings.setAttribute("aria-expanded", "false");
+});
+
 // Initialize on Load
+refreshAiMode();
 setState("ecommerce");

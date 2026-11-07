@@ -81,6 +81,29 @@
               <span class="tag-icon">🔐</span>
               <span>User Auth Flow</span>
             </button>
+            <button id="btn-ai-settings" class="sample-tag ai-settings-toggle" aria-expanded="false" aria-controls="ai-settings-panel">
+              <span class="tag-icon">🤖</span>
+              <span id="ai-mode-label">AI</span>
+            </button>
+          </div>
+
+          <!-- AI provider settings (open-source models, no backend) -->
+          <div id="ai-settings-panel" class="ai-settings-panel" hidden>
+            <div class="ai-settings-row">
+              <label for="ai-provider-select">AI engine</label>
+              <select id="ai-provider-select"></select>
+            </div>
+            <div class="ai-settings-row" id="ai-model-row">
+              <label for="ai-model-select">Open-source model</label>
+              <select id="ai-model-select"></select>
+            </div>
+            <div class="ai-settings-actions">
+              <span class="ai-settings-note">
+                In-browser models run on your GPU inside this page (Chrome/Edge with WebGPU). The first Generate downloads
+                the model once, then it is cached. No server, account or token needed.
+              </span>
+              <button id="btn-ai-save" class="primary-btn">Save</button>
+            </div>
           </div>
         </div>
       </section>
@@ -144,6 +167,7 @@
           <span class="status-item"><span class="branch-icon">⎇</span> main</span>
           <span class="status-item">Mermaid C4 Context</span>
           <span class="status-item" id="node-count">3 Components • 3 Relations</span>
+          <span class="status-item" id="ai-status"></span>
         </div>
         <div class="status-right">
           <span class="status-item">UTF-8</span>
@@ -154,6 +178,7 @@
     </main>
   </div>
 
+  <script src="ai.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
