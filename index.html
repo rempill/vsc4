@@ -147,7 +147,45 @@
               <span>Visual Preview (C4 Model)</span>
             </div>
             <div class="zoom-controls">
+              <button class="icon-btn" id="btn-zoom-out" title="Zoom out (Ctrl + mouse wheel)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button class="icon-btn zoom-level" id="btn-zoom-fit" title="Fit diagram to panel">100%</button>
+              <button class="icon-btn" id="btn-zoom-in" title="Zoom in (Ctrl + mouse wheel)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button class="icon-btn" id="btn-connect-mode" title="Connect mode: click two boxes to link them">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <span>Connect</span>
+              </button>
+              <button class="icon-btn" id="btn-delete-mode" title="Delete mode: click a box or connection to remove it">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span>Delete</span>
+              </button>
               <span id="diagram-title" class="diagram-tag">C4 Container Context</span>
+            </div>
+          </div>
+
+          <!-- Component Palette (drag items onto the canvas) -->
+          <div class="component-palette" id="component-palette">
+            <div class="palette-title">Components</div>
+            <div class="palette-item" draggable="true" data-kind="Person" title="Drag to add a Person">
+              <span class="palette-icon">👤</span><span>Person</span>
+            </div>
+            <div class="palette-item" draggable="true" data-kind="System" title="Drag to add a System">
+              <span class="palette-icon">🖥️</span><span>System</span>
+            </div>
+            <div class="palette-item" draggable="true" data-kind="System_Ext" title="Drag to add an External System">
+              <span class="palette-icon">🌐</span><span>External</span>
+            </div>
+            <div class="palette-item" draggable="true" data-kind="Container" title="Drag to add a Container">
+              <span class="palette-icon">📦</span><span>Container</span>
+            </div>
+            <div class="palette-item" draggable="true" data-kind="ContainerDb" title="Drag to add a Database">
+              <span class="palette-icon">🗄️</span><span>Database</span>
+            </div>
+            <div class="palette-item" draggable="true" data-kind="Component" title="Drag to add a Component">
+              <span class="palette-icon">🧩</span><span>Component</span>
             </div>
           </div>
 
@@ -157,6 +195,11 @@
             <div class="diagram-mount" id="diagram-mount">
               <!-- Rendered via JS -->
             </div>
+          </div>
+
+          <!-- Edit hint banner -->
+          <div class="edit-hint" id="edit-hint">
+            <span id="edit-hint-text">Drag components from the palette onto the canvas • Click <b>Connect</b> to link two boxes • Click <b>Delete</b> to remove</span>
           </div>
         </div>
       </section>

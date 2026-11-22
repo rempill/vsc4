@@ -10,9 +10,9 @@ const AI_PROVIDERS = {
   webllm: {
     label: "In-browser model (WebLLM, no setup)",
     models: [
-      { id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 1.5B (~1 GB download)" },
-      { id: "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 3B (~2 GB download, better)" },
-      { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B (~2 GB download)" }
+      { id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 1.5B" },
+      { id: "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 3B" },
+      { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B" }
     ]
   },
   mock: {
@@ -285,6 +285,7 @@ function c4CodeToState(code) {
     const style = elementStyle(e.kind);
     return {
       id: e.id,
+      _kind: e.kind,
       type: style.type,
       typeLabel: `[ ${style.label} ]`,
       icon: style.icon,
@@ -299,6 +300,10 @@ function c4CodeToState(code) {
     const { from, to } = edgePoints(pos[r.from], pos[r.to]);
     const text = r.tech ? `${r.label} (${r.tech})` : r.label;
     return {
+      fromId: r.from,
+      toId: r.to,
+      _rawLabel: r.label,
+      _rawTech: r.tech || "",
       from,
       to,
       label: escapeHtml(text.length > 34 ? text.slice(0, 33) + "…" : text),
@@ -311,7 +316,6 @@ function c4CodeToState(code) {
     nodeSummary: `${elements.length} Components • ${connections.length} Relations`,
     code,
     cards,
-    connections,
-    canvas
+    connections
   };
 }
