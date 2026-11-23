@@ -547,7 +547,7 @@ body.vscode-theme {
   position: relative;
   overflow: auto;
   display: flex;
-  padding: 30px;
+  padding: 0;
 }
 
 /* VS Code / Graph Grid Pattern */
@@ -560,12 +560,12 @@ body.vscode-theme {
   pointer-events: none;
 }
 
-/* margin: auto centers the diagram but, unlike flex centering, keeps every
-   side reachable by scrolling when it is larger than the panel */
+/* Anchored top-left: the diagram is stretched to cover the whole panel
+   (see applyCanvasSize in app.js), so cards can be dropped anywhere in it */
 .diagram-mount {
   position: relative;
   z-index: 1;
-  margin: auto;
+  margin: 0;
   flex-shrink: 0;
 }
 
