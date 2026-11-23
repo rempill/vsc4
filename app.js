@@ -218,7 +218,13 @@ function renderDiagram(state) {
   svgContent += `</svg>`;
 
   // HTML Cards
-  let cardsHtml = `<div class="c4-cards-layer">`;
+  // AI-generated layouts carry their own canvas size; presets use the CSS default
+  const sizeStyle = state.canvas
+    ? `style="width: ${state.canvas.width}px; min-width: ${state.canvas.width}px; min-height: ${state.canvas.height}px;"`
+    : "";
+  const layerStyle = state.canvas ? `style="height: ${state.canvas.height}px;"` : "";
+
+  let cardsHtml = `<div class="c4-cards-layer" ${layerStyle}>`;
   state.cards.forEach(card => {
     const modeClass = interactionMode === 'connect' ? 'connect-selectable' : 
                       interactionMode === 'delete' ? 'delete-target' : 'draggable';
@@ -238,7 +244,7 @@ function renderDiagram(state) {
   cardsHtml += `</div>`;
 
   diagramMount.innerHTML = `
-    <div class="c4-diagram animate-fade">
+    <div class="c4-diagram animate-fade" ${sizeStyle}>
       ${svgContent}
       ${cardsHtml}
     </div>
