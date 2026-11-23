@@ -268,6 +268,21 @@ function sizeDiagramToCards() {
   diagram.style.height = `${diagramSize.height}px`;
 }
 
+// Stretch the diagram to cover the whole visible panel (at the current zoom),
+// so cards can be dropped or moved anywhere in it, not only inside the cards' box
+function applyCanvasSize() {
+  const diagram = diagramMount.querySelector(".c4-diagram");
+  if (!diagram) return;
+  // Shrink to the content first, so the panel size read below only includes
+  // scrollbars the content itself needs
+  diagram.style.width = `${diagramSize.width}px`;
+  diagram.style.height = `${diagramSize.height}px`;
+  const visibleWidth = Math.floor(previewCanvas.clientWidth / zoomLevel);
+  const visibleHeight = Math.floor(previewCanvas.clientHeight / zoomLevel);
+  diagram.style.width = `${Math.max(diagramSize.width, visibleWidth)}px`;
+  diagram.style.height = `${Math.max(diagramSize.height, visibleHeight)}px`;
+}
+
 function setZoom(level) {
   zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
   // A fitted diagram never needs scrollbars. Hiding them also stops a loop where
@@ -275,10 +290,13 @@ function setZoom(level) {
   previewCanvas.style.overflow = zoomIsAuto ? "hidden" : "";
   diagramMount.style.zoom = zoomLevel;
   zoomLabel.textContent = `${Math.round(zoomLevel * 100)}%`;
+  applyCanvasSize();
 }
 
 // Fit the whole diagram in the panel, without enlarging it past 100%
 function fitDiagram() {
+  // Measure the panel without scrollbars left over from a manual zoom
+  previewCanvas.style.overflow = "hidden";
   const style = getComputedStyle(previewCanvas);
   const availableWidth = previewCanvas.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   const availableHeight = previewCanvas.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
@@ -348,6 +366,7 @@ new ResizeObserver(() => {
   cancelAnimationFrame(refitFrame);
   refitFrame = requestAnimationFrame(() => {
     if (zoomIsAuto) fitDiagram();
+    else applyCanvasSize();
   });
 }).observe(previewCanvas);
 
@@ -601,6 +620,10 @@ showState = function (state) {
 
 // --- Re-render from liveState without full reset ---
 function rerenderLive() {
+  // Once the user edits, keep the zoom fixed: refitting would rescale the
+  // diagram and make cards jump away from where they were placed
+  zoomIsAuto = false;
+
   // Recalculate connections edge points based on current card positions
   recalcConnections();
 
@@ -674,7 +697,8 @@ function renderDiagramFromLive(state) {
   `;
 
   sizeDiagramToCards();
-  if (zoomIsAuto) fitDiagram();
+  // sizeDiagramToCards resets the zoom to 1 to measure; restore it
+  setZoom(zoomLevel);
   attachCardInteractions();
 }
 
@@ -722,6 +746,10 @@ function attachCardInteractions() {
 function startCardDrag(el, cardId, startEvent) {
   const card = liveState.cards.find(c => c.id === cardId);
   if (!card) return;
+
+  // Stop auto-fit and show scrollbars so a card dragged past the edge is not clipped
+  zoomIsAuto = false;
+  previewCanvas.style.overflow = "";
 
   el.classList.add("dragging");
   const startX = startEvent.clientX;
