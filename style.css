@@ -289,6 +289,99 @@ body.vscode-theme {
   font-size: 13px;
 }
 
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* AI provider settings */
+.ai-settings-toggle {
+  margin-left: auto;
+}
+
+.ai-settings-toggle.ai-on {
+  border-color: #89d185;
+  color: #b5e8b0;
+}
+
+.ai-settings-panel {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.ai-settings-panel[hidden],
+.ai-settings-row[hidden] {
+  display: none;
+}
+
+.ai-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-settings-row label {
+  width: 140px;
+  color: var(--text-muted);
+}
+
+.ai-settings-row input,
+.ai-settings-row select {
+  flex: 1;
+  min-width: 200px;
+  background-color: var(--bg-input);
+  border: 1px solid #4a4a50;
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.ai-settings-row input:focus,
+.ai-settings-row select:focus {
+  border-color: var(--accent-cyan);
+}
+
+.ai-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-settings-note {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.ai-settings-note a {
+  color: var(--accent-cyan);
+}
+
+.secondary-btn {
+  background-color: #3a3d41;
+  color: var(--text-main);
+  border: 1px solid #4a4a50;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background-color: #45494e;
+}
+
 /* 2. Split Screen View */
 .editor-stage {
   flex: 1;
