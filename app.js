@@ -156,8 +156,23 @@ const nodeCount = document.getElementById("node-count");
 const btnCopyCode = document.getElementById("btn-copy-code");
 const btnGenerateLabel = btnGenerate.querySelector("span");
 
+const previewCanvas = document.getElementById("preview-canvas");
+const zoomLabel = document.getElementById("btn-zoom-fit");
+
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 2;
+const CANVAS_MARGIN = 20;
+
+let zoomLevel = 1;
+let zoomIsAuto = true; // Keep fitting the diagram to the panel until the user zooms
+let diagramSize = { width: 0, height: 0 };
+
 let currentCode = "";
 let loadedRulesText = "";
+
+// Interaction mode: 'move' (default drag), 'connect', 'delete'
+// Declared early so renderDiagram can reference it during initial load
+let interactionMode = 'move';
 
 // Syntax Highlighter for C4 Mermaid
 function highlightC4(text) {
@@ -178,7 +193,7 @@ function highlightC4(text) {
 function renderDiagram(state) {
   // SVG Arrow definitions & lines
   let svgContent = `
-    <svg class="c4-svg-overlay" width="100%" height="100%">
+    <svg class="c4-svg-overlay" id="svg-overlay" width="100%" height="100%">
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4fa6ff"/>
@@ -193,9 +208,9 @@ function renderDiagram(state) {
       </defs>
   `;
 
-  state.connections.forEach(conn => {
+  state.connections.forEach((conn, i) => {
     svgContent += `
-      <path d="M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}" marker-end="url(#arrow)" />
+      <path d="M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}" marker-end="url(#arrow)" data-conn-index="${i}" />
       <text x="${conn.labelPos.x}" y="${conn.labelPos.y}" class="c4-conn-label" filter="url(#label-bg)">${conn.label}</text>
     `;
   });
@@ -211,8 +226,11 @@ function renderDiagram(state) {
 
   let cardsHtml = `<div class="c4-cards-layer" ${layerStyle}>`;
   state.cards.forEach(card => {
+    const modeClass = interactionMode === 'connect' ? 'connect-selectable' : 
+                      interactionMode === 'delete' ? 'delete-target' : 'draggable';
     cardsHtml += `
-      <div class="c4-card ${card.type}" style="top: ${card.pos.top}px; left: ${card.pos.left}px; width: ${card.pos.width}px; min-height: ${card.pos.height}px;">
+      <div class="c4-card ${card.type} ${modeClass}" data-card-id="${card.id}"
+           style="top: ${card.pos.top}px; left: ${card.pos.left}px; width: ${card.pos.width}px; min-height: ${card.pos.height}px;">
         <div class="c4-card-header">
           <span class="c4-badge">${card.typeLabel}</span>
           <span class="c4-card-icon">${card.icon}</span>
@@ -231,6 +249,46 @@ function renderDiagram(state) {
       ${cardsHtml}
     </div>
   `;
+
+  sizeDiagramToCards();
+  zoomIsAuto = true;
+  fitDiagram();
+  attachCardInteractions();
+}
+
+// Size the canvas from the rendered cards, which grow with their text
+function sizeDiagramToCards() {
+  diagramMount.style.zoom = 1;
+  const diagram = diagramMount.querySelector(".c4-diagram");
+  if (!diagram) return;
+  const cards = [...diagramMount.querySelectorAll(".c4-card")];
+  if (cards.length === 0) {
+    diagramSize = { width: 400, height: 300 };
+  } else {
+    diagramSize = {
+      width: Math.max(...cards.map(c => c.offsetLeft + c.offsetWidth)) + CANVAS_MARGIN,
+      height: Math.max(...cards.map(c => c.offsetTop + c.offsetHeight)) + CANVAS_MARGIN
+    };
+  }
+  diagram.style.width = `${diagramSize.width}px`;
+  diagram.style.height = `${diagramSize.height}px`;
+}
+
+function setZoom(level) {
+  zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level));
+  // A fitted diagram never needs scrollbars. Hiding them also stops a loop where
+  // a scrollbar shrinks the panel, the refit removes it, and the panel grows back.
+  previewCanvas.style.overflow = zoomIsAuto ? "hidden" : "";
+  diagramMount.style.zoom = zoomLevel;
+  zoomLabel.textContent = `${Math.round(zoomLevel * 100)}%`;
+}
+
+// Fit the whole diagram in the panel, without enlarging it past 100%
+function fitDiagram() {
+  const style = getComputedStyle(previewCanvas);
+  const availableWidth = previewCanvas.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const availableHeight = previewCanvas.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  setZoom(Math.min(1, availableWidth / diagramSize.width, availableHeight / diagramSize.height));
 }
 
 // Show a state (preset or AI-generated) in both panels
@@ -264,6 +322,40 @@ function setState(key) {
 
   showState(state);
 }
+
+// Zoom Controls
+function zoomBy(factor) {
+  zoomIsAuto = false;
+  setZoom(zoomLevel * factor);
+}
+
+document.getElementById("btn-zoom-out").addEventListener("click", () => zoomBy(1 / 1.2));
+document.getElementById("btn-zoom-in").addEventListener("click", () => zoomBy(1.2));
+zoomLabel.addEventListener("click", () => {
+  zoomIsAuto = true;
+  fitDiagram();
+});
+
+// Ctrl + mouse wheel zooms the diagram instead of the whole page
+previewCanvas.addEventListener("wheel", (e) => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1);
+}, { passive: false });
+
+// Refit only when the panel's outer size really changes (e.g. the AI settings
+// panel opens), once per frame
+let lastCanvasSize = "";
+let refitFrame = 0;
+new ResizeObserver(() => {
+  const size = `${previewCanvas.offsetWidth}x${previewCanvas.offsetHeight}`;
+  if (size === lastCanvasSize) return;
+  lastCanvasSize = size;
+  cancelAnimationFrame(refitFrame);
+  refitFrame = requestAnimationFrame(() => {
+    if (zoomIsAuto) fitDiagram();
+  });
+}).observe(previewCanvas);
 
 // Event Listeners
 tagEcommerce.addEventListener("click", () => setState("ecommerce"));
@@ -466,3 +558,602 @@ btnAiSave.addEventListener("click", () => {
 // Initialize on Load
 refreshAiMode();
 setState("ecommerce");
+
+// ====================================================================
+//  INTERACTIVE DIAGRAM EDITING: Drag & Drop, Connect, Delete, Code Sync
+// ====================================================================
+
+// Live mutable state that tracks the current diagram for editing
+let liveState = null;
+
+// Connection source tracking
+let connectSource = null;    // card id of the first box clicked in connect mode
+
+const btnConnectMode = document.getElementById("btn-connect-mode");
+const btnDeleteMode = document.getElementById("btn-delete-mode");
+const editHintText = document.getElementById("edit-hint-text");
+const palette = document.getElementById("component-palette");
+
+// --- Mode toggling ---
+function setMode(mode) {
+  interactionMode = mode;
+  connectSource = null;
+  btnConnectMode.classList.toggle("active", mode === "connect");
+  btnDeleteMode.classList.toggle("active", mode === "delete");
+
+  // Update hint text
+  if (mode === "connect") {
+    editHintText.innerHTML = "🔗 <b>Connect mode</b>: Click the <b>source</b> box, then click the <b>target</b> box to create a relationship";
+  } else if (mode === "delete") {
+    editHintText.innerHTML = "🗑️ <b>Delete mode</b>: Click a <b>box</b> to remove it (and its connections), or click a <b>connection line</b> to remove it";
+  } else {
+    editHintText.innerHTML = "Drag components from the palette onto the canvas • Click <b>Connect</b> to link two boxes • Click <b>Delete</b> to remove";
+  }
+
+  // Re-render to apply mode-specific classes
+  if (liveState) rerenderLive();
+}
+
+btnConnectMode.addEventListener("click", () => setMode(interactionMode === "connect" ? "move" : "connect"));
+btnDeleteMode.addEventListener("click", () => setMode(interactionMode === "delete" ? "move" : "delete"));
+
+// --- Keep liveState in sync when showState is called ---
+const originalShowState = showState;
+showState = function (state) {
+  // Deep clone so we can mutate freely
+  liveState = JSON.parse(JSON.stringify(state));
+  originalShowState(state);
+};
+
+// --- Re-render from liveState without full reset ---
+function rerenderLive() {
+  // Recalculate connections edge points based on current card positions
+  recalcConnections();
+
+  currentCode = generateCodeFromState(liveState);
+  liveState.code = currentCode;
+
+  // Update code view
+  codeDisplay.innerHTML = highlightC4(currentCode);
+  const totalLines = currentCode.split("\n").length;
+  lineNumbers.innerHTML = Array.from({ length: totalLines }, (_, i) => i + 1).join("<br>");
+
+  // Update status
+  liveState.nodeSummary = `${liveState.cards.length} Components • ${liveState.connections.length} Relations`;
+  nodeCount.textContent = liveState.nodeSummary;
+
+  // Re-render diagram
+  renderDiagramFromLive(liveState);
+}
+
+// Render without resetting liveState (avoids infinite loop)
+function renderDiagramFromLive(state) {
+  let svgContent = `
+    <svg class="c4-svg-overlay${interactionMode === 'delete' ? ' delete-mode' : ''}" id="svg-overlay" width="100%" height="100%">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4fa6ff"/>
+        </marker>
+        <filter id="label-bg" x="-10%" y="-10%" width="120%" height="120%">
+          <feFlood flood-color="#18181c" flood-opacity="0.9" result="bg" />
+          <feMerge>
+            <feMergeNode in="bg" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+  `;
+
+  state.connections.forEach((conn, i) => {
+    svgContent += `
+      <path d="M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}" marker-end="url(#arrow)" data-conn-index="${i}" />
+      <text x="${conn.labelPos.x}" y="${conn.labelPos.y}" class="c4-conn-label" filter="url(#label-bg)">${conn.label}</text>
+    `;
+  });
+  svgContent += `</svg>`;
+
+  let cardsHtml = `<div class="c4-cards-layer">`;
+  state.cards.forEach(card => {
+    const modeClass = interactionMode === 'connect' ? 'connect-selectable' :
+                      interactionMode === 'delete' ? 'delete-target' : 'draggable';
+    const sourceClass = (interactionMode === 'connect' && connectSource === card.id) ? ' connect-source' : '';
+    cardsHtml += `
+      <div class="c4-card ${card.type} ${modeClass}${sourceClass}" data-card-id="${card.id}"
+           style="top: ${card.pos.top}px; left: ${card.pos.left}px; width: ${card.pos.width}px; min-height: ${card.pos.height}px;">
+        <div class="c4-card-header">
+          <span class="c4-badge">${card.typeLabel}</span>
+          <span class="c4-card-icon">${card.icon}</span>
+        </div>
+        <div class="c4-card-title">${card.title}</div>
+        ${card.tech ? `<div class="c4-card-tech">[${card.tech}]</div>` : ''}
+        <div class="c4-card-desc">${card.desc}</div>
+      </div>
+    `;
+  });
+  cardsHtml += `</div>`;
+
+  diagramMount.innerHTML = `
+    <div class="c4-diagram">
+      ${svgContent}
+      ${cardsHtml}
+    </div>
+  `;
+
+  sizeDiagramToCards();
+  if (zoomIsAuto) fitDiagram();
+  attachCardInteractions();
+}
+
+// --- Attach interactions to cards based on the current mode ---
+function attachCardInteractions() {
+  const cardEls = diagramMount.querySelectorAll(".c4-card");
+
+  cardEls.forEach(el => {
+    const cardId = el.dataset.cardId;
+
+    if (interactionMode === "move") {
+      // Drag to move
+      el.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        startCardDrag(el, cardId, e);
+      });
+    } else if (interactionMode === "connect") {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleConnectClick(cardId);
+      });
+    } else if (interactionMode === "delete") {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteCard(cardId);
+      });
+    }
+  });
+
+  // Delete mode: clickable connections
+  if (interactionMode === "delete") {
+    const paths = diagramMount.querySelectorAll(".c4-svg-overlay path[data-conn-index]");
+    paths.forEach(path => {
+      path.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt(path.dataset.connIndex);
+        deleteConnection(idx);
+      });
+    });
+  }
+}
+
+// --- Card Drag to Move ---
+function startCardDrag(el, cardId, startEvent) {
+  const card = liveState.cards.find(c => c.id === cardId);
+  if (!card) return;
+
+  el.classList.add("dragging");
+  const startX = startEvent.clientX;
+  const startY = startEvent.clientY;
+  const origLeft = card.pos.left;
+  const origTop = card.pos.top;
+
+  function onMove(e) {
+    const dx = (e.clientX - startX) / zoomLevel;
+    const dy = (e.clientY - startY) / zoomLevel;
+    card.pos.left = Math.max(0, origLeft + dx);
+    card.pos.top = Math.max(0, origTop + dy);
+
+    el.style.left = card.pos.left + "px";
+    el.style.top = card.pos.top + "px";
+
+    // Update SVG connections live
+    updateSVGConnections();
+  }
+
+  function onUp() {
+    el.classList.remove("dragging");
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    rerenderLive();
+  }
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+// --- Update SVG lines without full re-render (for smooth dragging) ---
+function updateSVGConnections() {
+  recalcConnections();
+  const svgOverlay = document.getElementById("svg-overlay");
+  if (!svgOverlay) return;
+
+  const paths = svgOverlay.querySelectorAll("path[data-conn-index]");
+  const texts = svgOverlay.querySelectorAll("text.c4-conn-label");
+
+  liveState.connections.forEach((conn, i) => {
+    if (paths[i]) {
+      paths[i].setAttribute("d", `M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}`);
+    }
+    if (texts[i]) {
+      texts[i].setAttribute("x", conn.labelPos.x);
+      texts[i].setAttribute("y", conn.labelPos.y);
+    }
+  });
+}
+
+// --- Recalculate connection endpoints from card positions ---
+function recalcConnections() {
+  liveState.connections.forEach(conn => {
+    const fromCard = liveState.cards.find(c => c.id === conn.fromId);
+    const toCard = liveState.cards.find(c => c.id === conn.toId);
+    if (!fromCard || !toCard) return;
+
+    const pts = edgePointsFromPos(fromCard.pos, toCard.pos);
+    conn.from = pts.from;
+    conn.to = pts.to;
+    conn.labelPos = { x: (pts.from.x + pts.to.x) / 2, y: (pts.from.y + pts.to.y) / 2 - 8 };
+  });
+}
+
+function edgePointsFromPos(a, b) {
+  const ac = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
+  const bc = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  if (b.left >= a.left + a.width) return { from: { x: a.left + a.width, y: ac.y }, to: { x: b.left, y: bc.y } };
+  if (a.left >= b.left + b.width) return { from: { x: a.left, y: ac.y }, to: { x: b.left + b.width, y: bc.y } };
+  if (bc.y > ac.y) return { from: { x: ac.x, y: a.top + a.height }, to: { x: bc.x, y: b.top } };
+  return { from: { x: ac.x, y: a.top }, to: { x: bc.x, y: b.top + b.height } };
+}
+
+// --- Palette Drag & Drop onto Canvas ---
+palette.querySelectorAll(".palette-item").forEach(item => {
+  item.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", item.dataset.kind);
+    e.dataTransfer.effectAllowed = "copy";
+  });
+});
+
+previewCanvas.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+  previewCanvas.classList.add("drag-over");
+});
+
+previewCanvas.addEventListener("dragleave", () => {
+  previewCanvas.classList.remove("drag-over");
+});
+
+previewCanvas.addEventListener("drop", (e) => {
+  e.preventDefault();
+  previewCanvas.classList.remove("drag-over");
+
+  const kind = e.dataTransfer.getData("text/plain");
+  if (!kind || !liveState) return;
+
+  // Calculate drop position in diagram coordinates
+  const rect = diagramMount.getBoundingClientRect();
+  const dropX = (e.clientX - rect.left) / zoomLevel;
+  const dropY = (e.clientY - rect.top) / zoomLevel;
+
+  // Switch to move mode if we were in a different mode
+  setMode("move");
+
+  // Show dialog to get element details
+  showNewCardDialog(kind, Math.max(0, dropX - 100), Math.max(0, dropY - 70));
+});
+
+// --- New Card Dialog ---
+function showNewCardDialog(kind, left, top) {
+  const style = elementStyle(kind);
+  const hasTech = kind.startsWith("Container") || kind.startsWith("Component");
+
+  const overlay = document.createElement("div");
+  overlay.className = "card-edit-dialog-overlay";
+  overlay.innerHTML = `
+    <div class="card-edit-dialog">
+      <h3>${style.icon} Add ${style.label}</h3>
+      <label for="new-card-label">Label (name)</label>
+      <input type="text" id="new-card-label" placeholder="e.g. My Service" autofocus />
+      ${hasTech ? `
+        <label for="new-card-tech">Technology</label>
+        <input type="text" id="new-card-tech" placeholder="e.g. Node.js, PostgreSQL" />
+      ` : ''}
+      <label for="new-card-desc">Description</label>
+      <input type="text" id="new-card-desc" placeholder="Short description of this component" />
+      <div class="dialog-actions">
+        <button class="secondary-btn" id="dialog-cancel">Cancel</button>
+        <button class="primary-btn" id="dialog-ok">Add</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const labelInput = overlay.querySelector("#new-card-label");
+  const descInput = overlay.querySelector("#new-card-desc");
+  const techInput = overlay.querySelector("#new-card-tech");
+
+  function close() { overlay.remove(); }
+
+  overlay.querySelector("#dialog-cancel").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector("#dialog-ok").addEventListener("click", () => {
+    const label = labelInput.value.trim() || "New " + style.label;
+    const desc = descInput.value.trim() || "";
+    const tech = techInput ? techInput.value.trim() : "";
+
+    addCardToState(kind, label, tech, desc, left, top);
+    close();
+  });
+
+  // Enter key on last input triggers OK
+  const lastInput = techInput || descInput;
+  lastInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") overlay.querySelector("#dialog-ok").click();
+  });
+  labelInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  setTimeout(() => labelInput.focus(), 50);
+}
+
+function addCardToState(kind, label, tech, desc, left, top) {
+  // Generate a unique camelCase alias
+  const baseAlias = label.replace(/[^a-zA-Z0-9]+/g, " ").trim().split(/\s+/)
+    .map((w, i) => i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join("");
+  let alias = baseAlias || "element";
+  let counter = 1;
+  while (liveState.cards.some(c => c.id === alias)) {
+    alias = baseAlias + counter++;
+  }
+
+  const style = elementStyle(kind);
+  const newCard = {
+    id: alias,
+    type: style.type,
+    typeLabel: `[ ${style.label} ]`,
+    icon: style.icon,
+    title: escapeHtml(label),
+    tech: escapeHtml(tech),
+    desc: escapeHtml(desc),
+    pos: { left, top, width: 200, height: 140 },
+    // Store kind for code generation
+    _kind: kind
+  };
+
+  liveState.cards.push(newCard);
+  rerenderLive();
+}
+
+// --- Connect Mode ---
+function handleConnectClick(cardId) {
+  if (!connectSource) {
+    // First click: select source
+    connectSource = cardId;
+    editHintText.innerHTML = `🔗 Source: <b>${getCardTitle(cardId)}</b> — now click the <b>target</b> box`;
+    rerenderLive(); // show highlight
+  } else if (connectSource === cardId) {
+    // Clicked same card, deselect
+    connectSource = null;
+    editHintText.innerHTML = "🔗 <b>Connect mode</b>: Click the <b>source</b> box, then click the <b>target</b> box";
+    rerenderLive();
+  } else {
+    // Second click: create connection
+    const fromId = connectSource;
+    const toId = cardId;
+    connectSource = null;
+    showConnectionDialog(fromId, toId);
+  }
+}
+
+function getCardTitle(cardId) {
+  const card = liveState.cards.find(c => c.id === cardId);
+  return card ? card.title : cardId;
+}
+
+function showConnectionDialog(fromId, toId) {
+  const overlay = document.createElement("div");
+  overlay.className = "connection-dialog-overlay";
+  overlay.innerHTML = `
+    <div class="connection-dialog">
+      <h3>🔗 Connect: ${getCardTitle(fromId)} → ${getCardTitle(toId)}</h3>
+      <label for="conn-label">Relationship label</label>
+      <input type="text" id="conn-label" placeholder="e.g. Sends requests" autofocus />
+      <label for="conn-tech">Technology / Protocol</label>
+      <input type="text" id="conn-tech" placeholder="e.g. HTTPS, gRPC, SQL" />
+      <div class="dialog-actions">
+        <button class="secondary-btn" id="conn-cancel">Cancel</button>
+        <button class="primary-btn" id="conn-ok">Create</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const labelInput = overlay.querySelector("#conn-label");
+  const techInput = overlay.querySelector("#conn-tech");
+
+  function close() { overlay.remove(); }
+
+  overlay.querySelector("#conn-cancel").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector("#conn-ok").addEventListener("click", () => {
+    const label = labelInput.value.trim() || "Uses";
+    const tech = techInput.value.trim();
+    addConnection(fromId, toId, label, tech);
+    close();
+  });
+
+  techInput.addEventListener("keydown", (e) => { if (e.key === "Enter") overlay.querySelector("#conn-ok").click(); });
+  labelInput.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+  setTimeout(() => labelInput.focus(), 50);
+}
+
+function addConnection(fromId, toId, label, tech) {
+  // Check for duplicate
+  if (liveState.connections.some(c => c.fromId === fromId && c.toId === toId)) {
+    return;
+  }
+
+  const fromCard = liveState.cards.find(c => c.id === fromId);
+  const toCard = liveState.cards.find(c => c.id === toId);
+  if (!fromCard || !toCard) return;
+
+  const displayLabel = tech ? `${label} (${tech})` : label;
+  const pts = edgePointsFromPos(fromCard.pos, toCard.pos);
+
+  liveState.connections.push({
+    fromId,
+    toId,
+    label: escapeHtml(displayLabel.length > 34 ? displayLabel.slice(0, 33) + "…" : displayLabel),
+    _rawLabel: label,
+    _rawTech: tech,
+    from: pts.from,
+    to: pts.to,
+    labelPos: { x: (pts.from.x + pts.to.x) / 2, y: (pts.from.y + pts.to.y) / 2 - 8 }
+  });
+
+  rerenderLive();
+}
+
+// --- Delete Mode ---
+function deleteCard(cardId) {
+  liveState.cards = liveState.cards.filter(c => c.id !== cardId);
+  liveState.connections = liveState.connections.filter(c => c.fromId !== cardId && c.toId !== cardId);
+  rerenderLive();
+}
+
+function deleteConnection(index) {
+  if (index >= 0 && index < liveState.connections.length) {
+    liveState.connections.splice(index, 1);
+    rerenderLive();
+  }
+}
+
+// --- Generate Mermaid C4 Code from Live State ---
+function generateCodeFromState(state) {
+  // Determine diagram type from first line of previous code, or default
+  let diagramType = "C4Context";
+  if (state.code) {
+    const match = state.code.match(/^(C4Context|C4Container|C4Component)/m);
+    if (match) diagramType = match[1];
+  }
+
+  let lines = [diagramType];
+  lines.push(`  title ${state.title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')}`);
+  lines.push("");
+
+  // Elements
+  state.cards.forEach(card => {
+    const kind = card._kind || kindFromType(card);
+    const label = unescapeHtml(card.title);
+    const desc = unescapeHtml(card.desc);
+    const tech = unescapeHtml(card.tech);
+
+    if (kind.startsWith("Container") || kind.startsWith("Component")) {
+      lines.push(`  ${kind}(${card.id}, "${label}", "${tech}", "${desc}")`);
+    } else {
+      lines.push(`  ${kind}(${card.id}, "${label}", "${desc}")`);
+    }
+  });
+
+  lines.push("");
+
+  // Relations
+  state.connections.forEach(conn => {
+    const label = conn._rawLabel || unescapeHtml(conn.label);
+    const tech = conn._rawTech || "";
+    if (tech) {
+      lines.push(`  Rel(${conn.fromId}, ${conn.toId}, "${label}", "${tech}")`);
+    } else {
+      lines.push(`  Rel(${conn.fromId}, ${conn.toId}, "${label}")`);
+    }
+  });
+
+  return lines.join("\n");
+}
+
+function kindFromType(card) {
+  // Reverse-map from display type back to Mermaid kind
+  const tl = card.typeLabel.toLowerCase();
+  if (tl.includes("person")) return "Person";
+  if (tl.includes("external")) return "System_Ext";
+  if (tl.includes("database")) return "ContainerDb";
+  if (tl.includes("container")) return "Container";
+  if (tl.includes("component")) return "Component";
+  return "System";
+}
+
+function unescapeHtml(text) {
+  if (!text) return "";
+  return text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+// escapeHtml is already defined in ai.js (loaded before app.js)
+
+// --- Enrich existing hardcoded connections with fromId/toId ---
+// When a preset state is loaded, connections only have {from, to, label, labelPos}
+// but no fromId/toId. We need to infer them for editing.
+const originalSetState = setState;
+setState = function (key) {
+  originalSetState(key);
+  enrichConnections();
+};
+
+function enrichConnections() {
+  if (!liveState) return;
+  liveState.connections.forEach(conn => {
+    if (conn.fromId && conn.toId) return; // already enriched
+
+    // Find closest card to the from/to points
+    conn.fromId = findClosestCard(conn.from, liveState.cards);
+    conn.toId = findClosestCard(conn.to, liveState.cards);
+
+    // Extract raw label and tech from display label
+    const match = conn.label.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (match) {
+      conn._rawLabel = unescapeHtml(match[1].trim());
+      conn._rawTech = unescapeHtml(match[2].trim());
+    } else {
+      conn._rawLabel = unescapeHtml(conn.label);
+      conn._rawTech = "";
+    }
+  });
+
+  // Also assign _kind to cards based on preset data
+  liveState.cards.forEach(card => {
+    if (!card._kind) {
+      card._kind = kindFromType(card);
+    }
+  });
+}
+
+function findClosestCard(point, cards) {
+  let best = null, bestDist = Infinity;
+  cards.forEach(card => {
+    const cx = card.pos.left + card.pos.width / 2;
+    const cy = card.pos.top + card.pos.height / 2;
+    // Check edge proximity: the point should be on or near the card's edge
+    const dx = Math.min(Math.abs(point.x - card.pos.left), Math.abs(point.x - (card.pos.left + card.pos.width)));
+    const dy = Math.min(Math.abs(point.y - card.pos.top), Math.abs(point.y - (card.pos.top + card.pos.height)));
+    const dist = Math.min(dx, dy) + Math.abs(cx - point.x) * 0.01 + Math.abs(cy - point.y) * 0.01;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = card.id;
+    }
+  });
+  return best;
+}
+
+// --- Keyboard shortcuts ---
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "Escape") setMode("move");
+  if (e.key === "c" && !e.ctrlKey && !e.metaKey) setMode(interactionMode === "connect" ? "move" : "connect");
+  if (e.key === "d" && !e.ctrlKey && !e.metaKey) setMode(interactionMode === "delete" ? "move" : "delete");
+});
+
+// --- Re-initialize with overrides active ---
+// The initial setState("ecommerce") ran before the overrides were installed,
+// so liveState is still null. Re-run to populate it and enrich connections.
+setState(currentStateKey);

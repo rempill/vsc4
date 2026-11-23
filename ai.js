@@ -285,6 +285,7 @@ function c4CodeToState(code) {
     const style = elementStyle(e.kind);
     return {
       id: e.id,
+      _kind: e.kind,
       type: style.type,
       typeLabel: `[ ${style.label} ]`,
       icon: style.icon,
@@ -299,6 +300,10 @@ function c4CodeToState(code) {
     const { from, to } = edgePoints(pos[r.from], pos[r.to]);
     const text = r.tech ? `${r.label} (${r.tech})` : r.label;
     return {
+      fromId: r.from,
+      toId: r.to,
+      _rawLabel: r.label,
+      _rawTech: r.tech || "",
       from,
       to,
       label: escapeHtml(text.length > 34 ? text.slice(0, 33) + "…" : text),
@@ -311,7 +316,6 @@ function c4CodeToState(code) {
     nodeSummary: `${elements.length} Components • ${connections.length} Relations`,
     code,
     cards,
-    connections,
-    canvas
+    connections
   };
 }
